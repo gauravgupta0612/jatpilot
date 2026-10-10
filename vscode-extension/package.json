@@ -1,0 +1,43 @@
+{
+  "name": "jarpilot",
+  "displayName": "JarPilot for IBM i",
+  "description": "One-click JAR installation on IBM i: upload to IFS, install, set authorities, verify, backup and rollback.",
+  "version": "1.0.0",
+  "publisher": "gauravgupta0612",
+  "license": "UNLICENSED",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Other"],
+  "keywords": ["IBM i", "AS400", "IFS", "JAR", "deploy"],
+  "main": "./extension.js",
+  "activationEvents": [],
+  "repository": { "type": "git", "url": "https://example.invalid/jarpilot" },
+  "contributes": {
+    "commands": [
+      { "command": "jarpilot.installFromPc",  "title": "Install JAR on IBM i (upload from PC)", "category": "JarPilot" },
+      { "command": "jarpilot.installFromIfs", "title": "Install JAR already on IFS",            "category": "JarPilot" },
+      { "command": "jarpilot.rollback",       "title": "Rollback last JAR install",             "category": "JarPilot" },
+      { "command": "jarpilot.status",         "title": "Show JAR install status",               "category": "JarPilot" },
+      { "command": "jarpilot.configure",      "title": "Configure IBM i connection",            "category": "JarPilot" }
+    ],
+    "menus": {
+      "explorer/context": [
+        { "command": "jarpilot.installFromPc", "when": "resourceExtname == .jar", "group": "navigation@90" }
+      ]
+    },
+    "configuration": {
+      "title": "JarPilot",
+      "properties": {
+        "jarpilot.host":           { "type": "string",  "default": "",                "description": "IBM i host name or IP." },
+        "jarpilot.user":           { "type": "string",  "default": "",                "description": "IBM i user profile used for SSH." },
+        "jarpilot.port":           { "type": "number",  "default": 22,                "description": "SSH port." },
+        "jarpilot.keyFile":        { "type": "string",  "default": "",                "description": "Optional private key file for SSH (otherwise password prompt in terminal)." },
+        "jarpilot.target":         { "type": "string",  "default": "/apps/java/lib", "description": "IFS directory where the JAR is installed." },
+        "jarpilot.owner":          { "type": "string",  "default": "",                "description": "Optional new owner (CHGOWN) for the installed JAR." },
+        "jarpilot.publicAut":      { "type": "string",  "default": "*RX", "enum": ["*RX", "*R", "*RWX", "*EXCLUDE"], "description": "*PUBLIC data authority on the JAR." },
+        "jarpilot.keepBackups":    { "type": "number",  "default": 5,                 "description": "Number of backups kept per JAR." },
+        "jarpilot.restartCommand": { "type": "string",  "default": "",                "description": "Optional CL command run after install (e.g. restart a server job)." },
+        "jarpilot.staging":        { "type": "string",  "default": "/tmp/jarpilot",   "description": "IFS staging directory for uploads." }
+      }
+    }
+  }
+}

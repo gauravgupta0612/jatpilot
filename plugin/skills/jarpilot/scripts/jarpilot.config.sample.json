@@ -1,0 +1,12 @@
+{
+  "IbmiHost": "your-ibmi-host",
+  "User": "YOURUSER",
+  "Port": 22,
+  "KeyFile": "",
+  "Target": "/apps/java/lib",
+  "Owner": "",
+  "PublicAut": "*RX",
+  "Keep": 5,
+  "Restart": "",
+  "Staging": "/tmp/jarpilot"
+}

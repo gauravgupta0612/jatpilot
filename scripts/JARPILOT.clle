@@ -1,0 +1,36 @@
+/* ================================================================== */
+/*  JARPILOT - JarPilot for IBM i, CL wrapper  (jarpilot 1.0.0) */
+/*  Lets operators / CL programs / job scheduler install a           */
+/*  JAR that is already on the IFS:                                  */
+/*    CALL JARPILOT PARM('install' '/tmp/app.jar' '/apps/lib' '*RX') */
+/*  Compile: CRTBNDCL PGM(MYLIB/JARPILOT) SRCSTMF('.../JARPILOT.clle') */
+/*  Script location defaults to /QOpenSys/jarpilot/jarpilot.sh        */
+/* ================================================================== */
+PGM PARM(&ACTION &JAR &TARGET &PUBAUT)
+  DCL VAR(&ACTION) TYPE(*CHAR) LEN(10)
+  DCL VAR(&JAR)    TYPE(*CHAR) LEN(256)
+  DCL VAR(&TARGET) TYPE(*CHAR) LEN(256)
+  DCL VAR(&PUBAUT) TYPE(*CHAR) LEN(10)
+  DCL VAR(&SCRIPT) TYPE(*CHAR) LEN(64) VALUE('/QOpenSys/jarpilot/jarpilot.sh')
+  DCL VAR(&CMD)    TYPE(*CHAR) LEN(1024)
+
+  IF COND(&PUBAUT *EQ ' ') THEN(CHGVAR VAR(&PUBAUT) VALUE('*RX'))
+
+  CHGVAR VAR(&CMD) VALUE('/QOpenSys/usr/bin/sh ' *CAT &SCRIPT *BCAT +
+           %TRIM(&ACTION) *BCAT '--target ' *CAT %TRIM(&TARGET))
+  IF COND(%TRIM(&ACTION) *EQ 'install') THEN(CHGVAR VAR(&CMD) +
+           VALUE(%TRIM(&CMD) *BCAT '--jar ' *CAT %TRIM(&JAR) *BCAT +
+           '--public-aut ' *CAT %TRIM(&PUBAUT)))
+  IF COND(%TRIM(&ACTION) *EQ 'rollback') THEN(CHGVAR VAR(&CMD) +
+           VALUE(%TRIM(&CMD) *BCAT '--name ' *CAT %TRIM(&JAR)))
+
+  ADDENVVAR ENVVAR(QIBM_QSH_CMD_ESCAPE_MSG) VALUE(Y) REPLACE(*YES)
+  ADDENVVAR ENVVAR(QIBM_QSH_CMD_OUTPUT) VALUE(STDOUT) REPLACE(*YES)
+  QSH CMD(&CMD)
+  MONMSG MSGID(QSH0005 QSH0006 QSH0007) EXEC(DO)
+    SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('JarPilot failed - +
+                see <target>/.jarpilot/logs') MSGTYPE(*ESCAPE)
+  ENDDO
+  SNDPGMMSG MSGID(CPF9898) MSGF(QCPFMSG) MSGDTA('JarPilot completed') +
+              MSGTYPE(*COMP)
+ENDPGM

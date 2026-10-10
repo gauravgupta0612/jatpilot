@@ -1,0 +1,7 @@
+{
+  "name": "jarpilot",
+  "version": "1.0.0",
+  "description": "JarPilot — fast, safe JAR installation on IBM i (upload to IFS, install, authorities, verify, backup, rollback).",
+  "author": { "name": "gauravgupta0612" },
+  "keywords": ["ibmi", "jar", "ifs", "deploy"]
+}
