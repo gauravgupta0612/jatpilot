@@ -1,9 +1,10 @@
-// JarPilot for IBM i — VS Code extension (jarpilot) v1.0.0
+// JarPilot for IBM i — VS Code extension (jarpilot) v1.1.0
 // Runs ssh/scp in an integrated terminal so password / host-key prompts just work.
 const vscode = require('vscode');
 const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
+const http = require('http');
 
 const cfg = () => vscode.workspace.getConfiguration('jarpilot');
 const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;          // quote for remote sh
@@ -116,6 +117,89 @@ async function status(ctx) {
   run(ctx, (ssh, _scp, remote) => [`${ssh} ${remote} ${lq(remoteCmd('status'))}`]);
 }
 
+// ---------------------------------------------------------------------------
+// Server setup (any server setup JAR delivered for IBM i)
+// The wizard runs on IBM i in the terminal (ssh -t): Steps 3-9 are asked there and
+// every answer is checked so the new server never reuses an existing library,
+// install directory, instance name or port.
+// ---------------------------------------------------------------------------
+function serverCmd(action, extra) {
+  const { staging } = sshParts();
+  return `/QOpenSys/usr/bin/sh ${shq(staging + '/jarpilot.sh')} ${action} --host ${shq(cfg().get('host'))}` + (extra || '');
+}
+
+async function installServer(ctx, uri) {
+  if (!(await ensureConfig())) return;
+  let local, ifs;
+  if (uri) local = uri.fsPath;
+  else {
+    const src = await vscode.window.showQuickPick(
+      ['Setup JAR is on this PC (upload to IFS)', 'Setup JAR is already on the IFS'], { placeHolder: 'Step 1 - where is the setup JAR?' });
+    if (!src) return;
+    if (src.startsWith('Setup JAR is on this PC')) {
+      const pick = await vscode.window.showOpenDialog({ filters: { 'Java archive': ['jar'] }, canSelectMany: false });
+      if (!pick) return;
+      local = pick[0].fsPath;
+    } else {
+      ifs = await vscode.window.showInputBox({ prompt: 'Full IFS path of the setup JAR', placeHolder: '/tmp/setup-server.jar', ignoreFocusOut: true });
+      if (!ifs) return;
+    }
+  }
+  const mode = await vscode.window.showQuickPick(
+    [{ label: 'Auto', description: 'JarPilot answers the installer with the checked values', v: '' },
+     { label: 'Manual', description: 'I type the answers in the installer myself', v: ' --manual' }],
+    { placeHolder: 'How should the vendor installer be answered?' });
+  if (!mode) return;
+  const ok = await vscode.window.showInformationMessage(
+    `Install server from ${path.basename(local || ifs)} on ${cfg().get('host')}? You will answer Steps 3-9 in the JarPilot terminal (use QSECOFR or equivalent).`,
+    { modal: true }, 'Start setup');
+  if (!ok) return;
+  run(ctx, (ssh, scp, remote, staging) => {
+    const rjar = local ? `${staging}/${path.basename(local)}` : ifs;
+    const lines = [];
+    if (local) lines.push(`${scp} ${lq(local)} ${remote}:${rjar}`);
+    lines.push(`${ssh} -t ${remote} ${lq(serverCmd('server-setup', ` --jar ${shq(rjar)}${mode.v}`))}`);
+    return lines;
+  });
+}
+
+async function startServer(ctx) {
+  if (!(await ensureConfig())) return;
+  const lib = await vscode.window.showInputBox({ prompt: 'Server library (added with ADDLIBLE)', ignoreFocusOut: true });
+  if (!lib) return;
+  const inst = await vscode.window.showInputBox({ prompt: 'Instance name', ignoreFocusOut: true });
+  if (!inst) return;
+  const sc = await vscode.window.showInputBox({ prompt: 'CL command that starts the server (&INSTANCE = instance name)', placeHolder: 'STRMYSVR INSTANCE(&INSTANCE)', ignoreFocusOut: true });
+  if (!sc) return;
+  const port = await vscode.window.showInputBox({ prompt: 'HTTP port', value: '5257', ignoreFocusOut: true });
+  if (!port) return;
+  run(ctx, (ssh, _scp, remote) => [`${ssh} ${remote} ${lq(serverCmd('server-start', ` --lib ${shq(lib)} --instance ${shq(inst)} --start-cmd ${shq(sc)} --http-port ${Number(port)}`))}`]);
+}
+
+function httpGet(url, ms) {
+  return new Promise((resolve) => {
+    const req = http.get(url, { timeout: ms }, (res) => { res.resume(); resolve(res.statusCode); });
+    req.on('timeout', () => { req.destroy(); resolve(0); });
+    req.on('error', () => resolve(0));
+  });
+}
+
+async function checkServer() {
+  if (!(await ensureConfig())) return;
+  const port = await vscode.window.showInputBox({ prompt: 'Server HTTP port', value: '5257', ignoreFocusOut: true });
+  if (!port) return;
+  const url = `http://${cfg().get('host')}:${Number(port)}/about`;
+  const code = await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: `Checking ${url}` },
+    async () => { for (let i = 0; i < 12; i++) { const c = await httpGet(url, 5000); if (c === 200) return c; await new Promise((r) => setTimeout(r, 5000)); } return 0; });
+  if (code === 200) {
+    const open = await vscode.window.showInformationMessage(`Server is up: ${url}`, 'Open in browser');
+    if (open) vscode.env.openExternal(vscode.Uri.parse(url));
+  } else {
+    vscode.window.showWarningMessage(`No answer from ${url}. Check the instance job log, the port, or the firewall.`);
+  }
+}
+
 function activate(ctx) {
   const reg = (id, fn) => ctx.subscriptions.push(vscode.commands.registerCommand(id, (...a) => fn(ctx, ...a)));
   reg('jarpilot.installFromPc', installFromPc);
@@ -123,6 +207,9 @@ function activate(ctx) {
   reg('jarpilot.rollback', rollback);
   reg('jarpilot.status', status);
   reg('jarpilot.configure', configure);
+  reg('jarpilot.installServer', installServer);
+  reg('jarpilot.startServer', startServer);
+  reg('jarpilot.checkServer', checkServer);
 }
 function deactivate() {}
 module.exports = { activate, deactivate };

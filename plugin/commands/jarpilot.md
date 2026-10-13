@@ -1,6 +1,6 @@
 ---
-description: Install, roll back or check a JAR on IBM i with JarPilot
-argument-hint: "[install|rollback|status] [jar path] [target IFS dir]"
+description: Install, roll back or check a JAR on IBM i, or install a server from a setup JAR, with JarPilot
+argument-hint: "[install|rollback|status|server-setup|server-start|server-check] [jar path] [target IFS dir]"
 ---
 
 Use the `jarpilot` skill to perform: $ARGUMENTS

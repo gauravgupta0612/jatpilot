@@ -1,8 +1,8 @@
 {
   "name": "jarpilot",
   "displayName": "JarPilot for IBM i",
-  "description": "One-click JAR installation on IBM i: upload to IFS, install, set authorities, verify, backup and rollback.",
-  "version": "1.0.0",
+  "description": "One-click JAR installation on IBM i: upload to IFS, install, set authorities, verify, backup and rollback. Guided server setup from a setup JAR with library / port overlap checks.",
+  "version": "1.1.0",
   "publisher": "gauravgupta0612",
   "license": "UNLICENSED",
   "engines": { "vscode": "^1.80.0" },
@@ -17,11 +17,15 @@
       { "command": "jarpilot.installFromIfs", "title": "Install JAR already on IFS",            "category": "JarPilot" },
       { "command": "jarpilot.rollback",       "title": "Rollback last JAR install",             "category": "JarPilot" },
       { "command": "jarpilot.status",         "title": "Show JAR install status",               "category": "JarPilot" },
-      { "command": "jarpilot.configure",      "title": "Configure IBM i connection",            "category": "JarPilot" }
+      { "command": "jarpilot.configure",      "title": "Configure IBM i connection",            "category": "JarPilot" },
+      { "command": "jarpilot.installServer",  "title": "Install server from setup JAR (guided)", "category": "JarPilot" },
+      { "command": "jarpilot.startServer",    "title": "Start server (ADDLIBLE + start command)","category": "JarPilot" },
+      { "command": "jarpilot.checkServer",    "title": "Check server (/about)",                 "category": "JarPilot" }
     ],
     "menus": {
       "explorer/context": [
-        { "command": "jarpilot.installFromPc", "when": "resourceExtname == .jar", "group": "navigation@90" }
+        { "command": "jarpilot.installFromPc", "when": "resourceExtname == .jar", "group": "navigation@90" },
+        { "command": "jarpilot.installServer", "when": "resourceExtname == .jar", "group": "navigation@91" }
       ]
     },
     "configuration": {
